@@ -10,7 +10,7 @@ Group=jupytersrv
 WorkingDirectory=/srv/jupyter-srv/notebooks
 
 EnvironmentFile=-/etc/jupyter-srv.conf
-
+Environment=PATH=/srv/jupyter-srv/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/bin:/bin
 Environment=JUPYTER_CONFIG_DIR=/srv/jupyter-srv/config
 Environment=JUPYTER_DATA_DIR=/srv/jupyter-srv/data
 Environment=JUPYTER_RUNTIME_DIR=/srv/jupyter-srv/runtime
