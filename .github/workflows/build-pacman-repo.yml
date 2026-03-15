@@ -38,8 +38,22 @@ jobs:
           chown -R builder:builder "$GITHUB_WORKSPACE"
 
       - name: Build package
+        shell: bash
         run: |
           set -euo pipefail
+
+          if [[ "${GITHUB_REF_TYPE:-}" == "tag" ]]; then
+            tag="${GITHUB_REF_NAME}"
+            pkgver_from_tag="${tag#v}"
+
+            if [[ -z "$pkgver_from_tag" || "$pkgver_from_tag" == "$tag" ]]; then
+              echo "Unsupported tag format: $tag"
+              exit 1
+            fi
+
+            sed -i -E "s/^pkgver=.*/pkgver=${pkgver_from_tag}/" PKGBUILD
+          fi
+
           su builder -c "cd '$GITHUB_WORKSPACE' && makepkg --noconfirm"
 
       - name: Read package metadata from PKGBUILD
