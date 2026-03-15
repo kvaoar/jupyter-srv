@@ -1,0 +1,126 @@
+name: build-pacman-repo
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Install build tools
+        run: |
+          set -euo pipefail
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm base-devel git pacman-contrib python
+
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Create build user
+        run: |
+          set -euo pipefail
+          useradd -m builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+
+      - name: Build package
+        run: |
+          set -euo pipefail
+          su builder -c "cd '$GITHUB_WORKSPACE' && makepkg --noconfirm"
+
+      - name: Read package metadata from PKGBUILD
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          source PKGBUILD
+
+          if [[ "$(declare -p pkgname 2>/dev/null || true)" == declare\ -a* ]]; then
+            repo_name="${pkgbase:-${pkgname[0]}}"
+          else
+            repo_name="${pkgbase:-$pkgname}"
+          fi
+
+          echo "REPO_NAME=$repo_name" >> "$GITHUB_ENV"
+
+      - name: Prepare published repo tree
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p site/x86_64
+          shopt -s nullglob
+
+          pkgs=( ./*.pkg.tar.zst )
+          if (( ${#pkgs[@]} == 0 )); then
+            echo "No .pkg.tar.zst files were produced"
+            exit 1
+          fi
+
+          cp "${pkgs[@]}" site/x86_64/
+
+          cd site/x86_64
+          repo-add "${REPO_NAME}.db.tar.gz" ./*.pkg.tar.zst
+          ln -sf "${REPO_NAME}.db.tar.gz" "${REPO_NAME}.db"
+          ln -sf "${REPO_NAME}.files.tar.gz" "${REPO_NAME}.files"
+
+          cat > index.html <<EOF
+          <!doctype html>
+          <html lang="en">
+          <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>${REPO_NAME} x86_64 repo</title>
+          </head>
+          <body>
+          <h1>${REPO_NAME} x86_64 repo</h1>
+          <ul>
+              <li><a href="./${REPO_NAME}.db">repo db</a></li>
+              <li><a href="./${REPO_NAME}.db.tar.gz">repo db tar.gz</a></li>
+              <li><a href="./${REPO_NAME}.files">repo files</a></li>
+              <li><a href="./${REPO_NAME}.files.tar.gz">repo files tar.gz</a></li>
+          </ul>
+          </body>
+          </html>
+          EOF
+
+          cd ..
+          printf '' > .nojekyll
+
+          cat > index.html <<EOF
+          <!doctype html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>${REPO_NAME} pacman repo</title>
+          </head>
+          <body>
+            <h1>${REPO_NAME} pacman repo</h1>
+            <p><a href="./x86_64/">x86_64/</a></p>
+          </body>
+          </html>
+          EOF
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

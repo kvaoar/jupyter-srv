@@ -1,0 +1,3 @@
+g jupytersrv - -
+u jupytersrv - "Jupyter service user" /srv/jupyter-srv
+m jupytersrv jupytersrv

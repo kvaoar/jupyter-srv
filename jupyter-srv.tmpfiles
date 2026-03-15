@@ -1,0 +1,6 @@
+d /srv/jupyter-srv 0770 jupytersrv jupytersrv -
+d /srv/jupyter-srv/venv 0770 jupytersrv jupytersrv -
+d /srv/jupyter-srv/notebooks 0770 jupytersrv jupytersrv -
+d /srv/jupyter-srv/config 0770 jupytersrv jupytersrv -
+d /srv/jupyter-srv/data 0770 jupytersrv jupytersrv -
+d /srv/jupyter-srv/runtime 0770 jupytersrv jupytersrv -

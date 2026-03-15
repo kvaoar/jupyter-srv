@@ -1,0 +1,56 @@
+post_install() {
+  _jupyter_srv_setup
+  cat <<'EOF'
+==> jupyter-srv installed.
+
+1) Create your local config:
+   sudo install -Dm644 /usr/share/jupyter-srv/jupyter-srv.conf.example /etc/jupyter-srv.conf
+
+2) Grant access to a human user by group membership:
+   sudo usermod -aG jupytersrv YOUR_LOGIN
+
+3) Re-login so the new group is applied.
+
+4) Enable and start:
+   sudo systemctl enable --now jupyter-srv.service
+EOF
+}
+
+post_upgrade() {
+  _jupyter_srv_setup
+}
+
+post_remove() {
+  cat <<'EOF'
+==> Package removed.
+==> /srv/jupyter-srv was left intact on purpose.
+==> Remove it manually if you really want:
+   sudo rm -rf /srv/jupyter-srv
+EOF
+}
+
+_jupyter_srv_setup() {
+  systemd-sysusers /usr/lib/sysusers.d/jupyter-srv.conf
+  systemd-tmpfiles --create /usr/lib/tmpfiles.d/jupyter-srv.conf
+
+  if [[ ! -x /srv/jupyter-srv/venv/bin/python ]]; then
+    /usr/bin/python -m venv /srv/jupyter-srv/venv
+  fi
+
+  /srv/jupyter-srv/venv/bin/python -m ensurepip --upgrade || true
+  /srv/jupyter-srv/venv/bin/python -m pip install --upgrade pip setuptools wheel
+  /srv/jupyter-srv/venv/bin/python -m pip install --upgrade jupyterlab
+
+  chown -R jupytersrv:jupytersrv /srv/jupyter-srv
+  chmod 0770 \
+    /srv/jupyter-srv \
+    /srv/jupyter-srv/venv \
+    /srv/jupyter-srv/notebooks \
+    /srv/jupyter-srv/config \
+    /srv/jupyter-srv/data \
+    /srv/jupyter-srv/runtime
+
+  if [[ ! -f /etc/jupyter-srv.conf ]]; then
+    install -Dm644 /usr/share/jupyter-srv/jupyter-srv.conf.example /etc/jupyter-srv.conf
+  fi
+}

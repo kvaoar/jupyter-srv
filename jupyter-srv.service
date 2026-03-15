@@ -1,0 +1,37 @@
+[Unit]
+Description=Jupyter Lab in /srv
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=jupytersrv
+Group=jupytersrv
+WorkingDirectory=/srv/jupyter-srv/notebooks
+
+EnvironmentFile=-/etc/jupyter-srv.conf
+
+Environment=JUPYTER_CONFIG_DIR=/srv/jupyter-srv/config
+Environment=JUPYTER_DATA_DIR=/srv/jupyter-srv/data
+Environment=JUPYTER_RUNTIME_DIR=/srv/jupyter-srv/runtime
+
+UMask=0007
+
+ExecStart=/srv/jupyter-srv/venv/bin/jupyter-lab \
+  --ip=${JUPYTER_IP} \
+  --port=${JUPYTER_PORT} \
+  --no-browser \
+  ${JUPYTER_TOKEN_ARG} \
+  ${JUPYTER_EXTRA_ARGS}
+
+Restart=always
+RestartSec=5
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/srv/jupyter-srv
+
+[Install]
+WantedBy=multi-user.target
